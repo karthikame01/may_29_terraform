@@ -1,8 +1,7 @@
 pipeline {
-
     parameters {
         booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
-    }
+    } 
 
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
@@ -14,18 +13,15 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // This uses the Jenkinsfile's SCM by default
-                checkout scm
+                git url: "https://github.com/karthikame01/may_29_terraform.git", credentialsId: 'demo1'
             }
         }
 
         stage('Terraform Init & Plan') {
             steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                    sh 'terraform plan -out tfplan'
-                    sh 'terraform show -no-color tfplan > tfplan.txt'
-                }
+                sh 'terraform init'
+                sh 'terraform plan -out=tfplan'
+                sh 'terraform show -no-color tfplan > tfplan.txt'
             }
         }
 
@@ -37,18 +33,16 @@ pipeline {
             }
             steps {
                 script {
-                    def plan = readFile 'terraform/tfplan.txt'
+                    def plan = readFile 'tfplan.txt'
                     input message: "Do you want to apply the plan?",
-                        parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
+                    parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
                 }
             }
         }
 
         stage('Apply') {
             steps {
-                dir('terraform') {
-                    sh 'terraform apply -input=false tfplan'
-                }
+                sh 'terraform apply -input=false tfplan'
             }
         }
     }

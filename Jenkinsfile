@@ -1,6 +1,7 @@
 pipeline {
     parameters {
         booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
+        booleanParam(name: 'destroy', defaultValue: false, description: 'Destroy instead of Apply?')
     } 
 
     environment {
@@ -20,8 +21,14 @@ pipeline {
         stage('Terraform Init & Plan') {
             steps {
                 sh 'terraform init'
-                sh 'terraform plan -out=tfplan'
-                sh 'terraform show -no-color tfplan > tfplan.txt'
+                script {
+                    if (params.destroy) {
+                        sh 'terraform plan -destroy -out=tfplan'
+                    } else {
+                        sh 'terraform plan -out=tfplan'
+                    }
+                    sh 'terraform show -no-color tfplan > tfplan.txt'
+                }
             }
         }
 
@@ -34,15 +41,21 @@ pipeline {
             steps {
                 script {
                     def plan = readFile 'tfplan.txt'
-                    input message: "Do you want to apply the plan?",
+                    input message: "Do you want to proceed?",
                     parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
                 }
             }
         }
 
-        stage('Apply') {
+        stage('Apply/Destroy') {
             steps {
-                sh 'terraform apply -input=false tfplan'
+                script {
+                    if (params.destroy) {
+                        sh 'terraform apply -input=false tfplan'
+                    } else {
+                        sh 'terraform apply -input=false tfplan'
+                    }
+                }
             }
         }
     }
